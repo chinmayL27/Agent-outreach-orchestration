@@ -5,7 +5,12 @@ public web data, scores them deterministically, writes evidence-grounded
 outreach, builds a customized chatbot demo, records a ~60-second demo video,
 and parks everything in a **human approval queue** before anything is sent.
 
-Implements [PRD.md](docs/PRD.md) and [TDD.md](docs/TDD.md).
+**New here?** [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md) explains the whole
+system in plain language, with a diagram — start there if you are not going to
+read the code.
+
+Implements [PRD.md](docs/PRD.md) and [TDD.md](docs/TDD.md); conformance and
+known gaps are tracked in [CONFORMANCE.md](docs/CONFORMANCE.md).
 
 ```
 campaign.yaml
