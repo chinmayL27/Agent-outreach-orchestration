@@ -126,13 +126,34 @@ def test_exclusions_filter_hospitals_and_universities():
 
 def test_fixture_source_applies_query_filters_and_resolves_local_sites():
     source = FixtureSource(FIXTURES / "nppes_sample.json")
-    results = source.search(LeadQuery(specialties=["Dermatology"], state="CA", limit=10,
-                                      exclude_keywords=["hospital"]))
-    assert [r.organization_name for r in results] == ["ABC Dermatology, P.C."]
-    assert results[0].website.startswith("file://")
+    results = source.search(
+        LeadQuery(specialties=["Dermatology"], state="CA", limit=10, exclude_keywords=["hospital"])
+    )
+    names = [r.organization_name for r in results]
 
+    assert "ABC Dermatology, P.C." in names
+    assert all("Dermatology" in " ".join(r.specialty) for r in results)
+    assert not any("Hospital" in name for name in names)
+    # Pediatrics/dental/urgent-care records are in the payload but off-query.
+    assert not any("Pediatrics" in name for name in names)
+
+    abc = next(r for r in results if r.organization_name == "ABC Dermatology, P.C.")
+    assert abc.website.startswith("file://")
+    assert abc.npi_numbers == ["1234567893", "1093847561"]  # individual merged in
+
+
+def test_fixture_payload_covers_the_awkward_cases():
+    """The offline fixture must exercise more than the happy path."""
     payload = json.loads((FIXTURES / "nppes_sample.json").read_text())
-    assert len(payload["results"]) == 4  # hospital + other specialty were filtered out
+    names = [
+        r["basic"].get("organization_name", "") for r in payload["results"]
+    ]
+    assert len(payload["results"]) >= 20
+    assert any("HOSPITAL" in n for n in names)  # excluded by campaign rules
+    assert any("UNIVERSITY" in n for n in names)
+    assert any(r["enumeration_type"] == "NPI-1" for r in payload["results"])  # merge case
+    # Most practices have no resolvable website, exactly like the real registry.
+    assert len(payload["website_hints"]) < len(payload["results"]) / 2
 
 
 def test_resolve_website_uses_campaign_map(campaign):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.models.schemas import DemoConfig, VideoScript, VideoSegment
+from app.util.text import truncate
 
 #: Seconds per beat, matching the 0-7 / 7-15 / 15-35 / 35-48 / 48-55 / 55-60 plan.
 DEFAULT_TIMINGS = {
@@ -12,6 +13,23 @@ DEFAULT_TIMINGS = {
     "benefit": 7.0,
     "cta": 6.0,
 }
+
+
+def caption_for(segment: VideoSegment, config: DemoConfig) -> str:
+    """One line of on-screen caption text per scene.
+
+    Captions are the MVP's accessibility track: no narration is required
+    (PRD s4.6).
+    """
+    # Intro and CTA scenes are full-screen cards that already carry their text;
+    # a caption strip would just duplicate it.
+    if segment.kind in {"intro", "cta"}:
+        return ""
+    if segment.kind == "brand":
+        return f"{config.business_name} - assistant built from your public website"
+    if segment.kind == "question":
+        return truncate(f"Patient: {segment.text}", 150)
+    return truncate(segment.text, 150)
 
 
 def build_script(config: DemoConfig, target_seconds: float = 60.0) -> VideoScript:

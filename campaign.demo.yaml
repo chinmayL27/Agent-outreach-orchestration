@@ -13,6 +13,9 @@ campaign:
   specialties:
     - Dermatology
     - Family Medicine
+    - Pediatrics
+    - Dentist
+    - Urgent Care
 
   geography:
     state: CA
@@ -25,6 +28,8 @@ campaign:
     - hospital
     - university
     - medical center
+    - department of
+    - student health
 
   maximum_leads: 20
 

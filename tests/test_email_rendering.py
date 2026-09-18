@@ -35,17 +35,30 @@ def test_render_email_appends_links_and_the_legal_footer(settings):
     rendered = render_email(
         sample_lead(),
         sample_personalization(),
-        demo_url="http://localhost:8000/demo/lead-1",
+        demo_url="https://demos.testco.example/lead-1.html",
         video_note="60-second walkthrough attached: lead-1.mp4",
         settings=settings,
     )
     assert rendered.recipient == "info@abcdermatology.example"
-    assert "http://localhost:8000/demo/lead-1" in rendered.body_text
+    assert "https://demos.testco.example/lead-1.html" in rendered.body_text
     assert "lead-1.mp4" in rendered.body_text
+    assert rendered.links_public is True
     assert settings.sender_postal_address in rendered.body_text
     assert settings.unsubscribe_mailto in rendered.body_text
     assert "<a href=" in rendered.body_html
     assert rendered.word_count > 0
+
+
+def test_localhost_and_file_links_are_never_written_into_an_email(settings):
+    """A recipient cannot open the operator's laptop (TDD s16)."""
+    for unusable in ("http://localhost:8000/demo/lead-1", "file:///tmp/demo/lead-1.html"):
+        rendered = render_email(
+            sample_lead(), sample_personalization(), demo_url=unusable, settings=settings
+        )
+        assert unusable not in rendered.body_text
+        assert unusable not in rendered.body_html
+        assert rendered.links_public is False
+        assert rendered.demo_url is None
 
 
 def test_render_email_requires_a_recipient(settings):

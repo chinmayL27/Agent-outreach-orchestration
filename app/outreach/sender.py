@@ -22,9 +22,19 @@ from typing import Protocol
 from app.config import Settings, get_settings
 
 
+#: Failures that leave delivery genuinely unknown: the server may already have
+#: accepted the message when the connection dropped.
+AMBIGUOUS_ERRORS = (
+    smtplib.SMTPServerDisconnected,
+    smtplib.SMTPResponseException,
+    TimeoutError,
+    ConnectionResetError,
+)
+
+
 @dataclass
 class SendResult:
-    status: str  # SENT | SEND_FAILED
+    status: str  # SENT | SEND_FAILED | SEND_UNCERTAIN
     message_id: str | None = None
     provider: str = "console"
     error: str | None = None
@@ -33,9 +43,16 @@ class SendResult:
     def ok(self) -> bool:
         return self.status == "SENT"
 
+    @property
+    def uncertain(self) -> bool:
+        return self.status == "SEND_UNCERTAIN"
+
 
 class EmailProvider(Protocol):
     name: str
+    #: True when the provider actually delivers to a third party, so demo and
+    #: video links must resolve somewhere the recipient can reach.
+    requires_public_links: bool
 
     def send(
         self,
@@ -80,6 +97,7 @@ class ConsoleEmailProvider:
     """Writes the exact message to disk instead of sending it."""
 
     name = "console"
+    requires_public_links = False
 
     def __init__(self, settings: Settings | None = None):
         self.settings = settings or get_settings()
@@ -102,6 +120,7 @@ class ConsoleEmailProvider:
 
 class SmtpEmailProvider:
     name = "smtp"
+    requires_public_links = True
 
     def __init__(self, settings: Settings | None = None):
         self.settings = settings or get_settings()
@@ -126,6 +145,17 @@ class SmtpEmailProvider:
                 if settings.smtp_user and settings.smtp_password:
                     server.login(settings.smtp_user, settings.smtp_password)
                 server.send_message(message)
+        except smtplib.SMTPRecipientsRefused as exc:
+            # Definitive rejection: nothing was delivered.
+            return SendResult(
+                status="SEND_FAILED", provider=self.name, error=f"recipient refused: {exc}"
+            )
+        except AMBIGUOUS_ERRORS as exc:
+            # The server may have accepted the message before the failure, so
+            # this is recorded as uncertain and never resent automatically.
+            return SendResult(
+                status="SEND_UNCERTAIN", provider=self.name, error=f"{type(exc).__name__}: {exc}"
+            )
         except Exception as exc:  # noqa: BLE001 - recorded, never auto-retried
             return SendResult(
                 status="SEND_FAILED", provider=self.name, error=f"{type(exc).__name__}: {exc}"

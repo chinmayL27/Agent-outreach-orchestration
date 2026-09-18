@@ -16,7 +16,7 @@ from app.enrichment.crawler import CrawlResult, crawl_site
 from app.extraction.email import extract_emails, rank_emails
 from app.extraction.normalize import domain_of
 from app.util.http import Fetcher
-from app.util.text import truncate
+from app.util.text import excerpt_around, truncate
 
 
 @dataclass
@@ -25,6 +25,7 @@ class EvidenceItem:
     value: str
     source_url: str
     page_title: str | None = None
+    excerpt: str | None = None
 
 
 @dataclass
@@ -90,13 +91,18 @@ def enrich_from_crawl(crawl: CrawlResult, organization_name: str) -> EnrichmentO
     }
     fields["company_summary"] = summarize(fields, organization_name)
 
+    page_by_url = {page.url: page for page in pages}
+
     def add(attribute: str, value: str, url: str | None, title: str | None = None) -> None:
+        source = url or home.url
+        page = page_by_url.get(source, home)
         outcome.evidence.append(
             EvidenceItem(
                 attribute=attribute,
                 value=truncate(value, 240),
-                source_url=url or home.url,
-                page_title=title or home.title,
+                source_url=source,
+                page_title=title or page.title,
+                excerpt=excerpt_around(page.text, value),
             )
         )
 

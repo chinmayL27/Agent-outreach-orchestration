@@ -25,6 +25,8 @@ def log_event(
     campaign_id: str | None = None,
     duration_ms: int = 0,
     detail: str | None = None,
+    attempt: int = 1,
+    input_fingerprint: str | None = None,
     **extra: Any,
 ) -> StageEvent:
     event = StageEvent(
@@ -34,6 +36,8 @@ def log_event(
         status=status,
         duration_ms=duration_ms,
         detail=detail,
+        attempt=attempt,
+        input_fingerprint=input_fingerprint,
         extra=extra or {},
     )
     session.add(event)
@@ -45,6 +49,8 @@ def log_event(
                 "status": status,
                 "duration_ms": duration_ms,
                 "detail": detail,
+                "attempt": attempt,
+                "fingerprint": input_fingerprint,
                 **extra,
             }
         )
@@ -59,10 +65,17 @@ def stage_timer(
     stage: str,
     lead_id: str | None = None,
     campaign_id: str | None = None,
+    input_fingerprint: str | None = None,
+    attempt: int = 1,
 ) -> Iterator[dict[str, Any]]:
     """Time a stage and always emit an event, SUCCESS or FAILURE."""
     started = time.perf_counter()
-    result: dict[str, Any] = {"status": "SUCCESS", "detail": None, "extra": {}}
+    result: dict[str, Any] = {
+        "status": "SUCCESS",
+        "detail": None,
+        "extra": {},
+        "input_fingerprint": input_fingerprint,
+    }
     try:
         yield result
     except Exception as exc:  # noqa: BLE001 - recorded, then re-raised
@@ -75,6 +88,8 @@ def stage_timer(
             campaign_id=campaign_id,
             duration_ms=elapsed,
             detail=f"{type(exc).__name__}: {exc}",
+            attempt=attempt,
+            input_fingerprint=result.get("input_fingerprint"),
         )
         raise
     else:
@@ -87,6 +102,8 @@ def stage_timer(
             campaign_id=campaign_id,
             duration_ms=elapsed,
             detail=result["detail"],
+            attempt=attempt,
+            input_fingerprint=result.get("input_fingerprint"),
             **result["extra"],
         )
 

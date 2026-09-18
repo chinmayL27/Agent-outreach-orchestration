@@ -68,6 +68,8 @@ def approve(session: Session, lead: Lead, approved_by: str = "human") -> EmailDr
         raise ValueError(f"no email draft for {lead.organization_name}")
     draft.approved_at = datetime.now(timezone.utc)
     draft.approved_by = approved_by
+    # Approval binds to this exact recipient and package version.
+    draft.approved_package_version = draft.package_version
     lead.set_status(LeadStatus.APPROVED)
     log_event(session, stage="APPROVAL", status="APPROVED", lead_id=lead.id, detail=approved_by)
     return draft
@@ -89,10 +91,27 @@ def edit(session: Session, lead: Lead, *, subject: str | None = None, body: str 
     ).scalar_one_or_none()
     if draft is None:
         raise ValueError(f"no email draft for {lead.organization_name}")
-    if subject:
+    changed = False
+    if subject and subject.strip() != draft.subject:
         draft.subject = subject.strip()
-    if body:
+        changed = True
+    if body and body != draft.body_text:
         draft.body_text = body
+        changed = True
+    if not changed:
+        return draft
+
     draft.edited_by_human = True
-    log_event(session, stage="APPROVAL", status="EDITED", lead_id=lead.id)
+    # A material edit invalidates any prior approval (TDD s7/s15).
+    lost_approval = draft.invalidate_approval()
+    if lead.lead_status is LeadStatus.APPROVED:
+        lead.set_status(LeadStatus.REVIEW_REQUIRED, detail="edited after approval")
+    log_event(
+        session,
+        stage="APPROVAL",
+        status="EDITED",
+        lead_id=lead.id,
+        detail="approval invalidated" if lost_approval else None,
+        package_version=draft.package_version,
+    )
     return draft

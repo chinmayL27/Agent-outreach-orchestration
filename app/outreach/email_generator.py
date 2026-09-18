@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from app.config import Settings, get_settings
 from app.models.lead import Lead
 from app.models.outreach import Personalization
+from app.outreach.publisher import is_publicly_reachable
 from app.util.text import word_count
 
 
@@ -23,6 +24,9 @@ class RenderedEmail:
     body_text: str
     body_html: str
     word_count: int
+    #: True when every asset link in the body is reachable by the recipient.
+    links_public: bool = False
+    demo_url: str | None = None
 
 
 class EmailValidationError(RuntimeError):
@@ -61,9 +65,12 @@ def render_email(
         raise EmailValidationError("UNSUBSCRIBE_MAILTO is required (CAN-SPAM opt-out mechanism)")
 
     body = personalization.email_body.strip()
+    # A localhost or file:// link is worse than no link: it looks broken to the
+    # recipient. Only publicly reachable URLs are written into the message.
+    public_demo_url = demo_url if is_publicly_reachable(demo_url) else None
     links: list[str] = []
-    if demo_url:
-        links.append(f"Personalized demo: {demo_url}")
+    if public_demo_url:
+        links.append(f"Personalized demo: {public_demo_url}")
     if video_note:
         links.append(video_note)
 
@@ -79,8 +86,11 @@ def render_email(
         if paragraph.strip()
     )
     link_html = ""
-    if demo_url:
-        link_html += f'<p><a href="{html.escape(demo_url, quote=True)}">See the personalized demo</a></p>'
+    if public_demo_url:
+        link_html += (
+            f'<p><a href="{html.escape(public_demo_url, quote=True)}">'
+            "See the personalized demo</a></p>"
+        )
     if video_note:
         link_html += f"<p>{html.escape(video_note)}</p>"
     footer_html = "<hr />" + "".join(
@@ -103,4 +113,6 @@ def render_email(
         body_text=body_text,
         body_html=body_html,
         word_count=word_count(body),
+        links_public=bool(public_demo_url),
+        demo_url=public_demo_url,
     )

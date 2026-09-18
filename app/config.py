@@ -65,13 +65,19 @@ class Settings:
     crawl_delay: float = 0.5
     user_agent: str = "outreach-agent/0.1"
     respect_robots: bool = True
+    #: file:// crawling is only for the bundled offline demo fixtures.
+    allow_file_urls: bool = False
 
     ffmpeg_bin: str | None = None
     chromium_executable: str | None = None
     video_width: int = 1280
     video_height: int = 720
+    video_min_seconds: float = 45.0
+    video_max_seconds: float = 65.0
 
     demo_base_url: str = "http://localhost:8000"
+    #: Public base URL where demos/videos are published for recipients.
+    public_artifact_base_url: str | None = None
 
     email_provider: str = "console"
     sender_name: str = "Your Name"
@@ -140,11 +146,13 @@ def get_settings() -> Settings:
         crawl_delay=_float("CRAWL_DELAY", 0.5),
         user_agent=os.getenv("USER_AGENT", "outreach-agent/0.1"),
         respect_robots=_bool("RESPECT_ROBOTS", True),
+        allow_file_urls=_bool("ALLOW_FILE_URLS", False),
         ffmpeg_bin=os.getenv("FFMPEG_BIN"),
         chromium_executable=os.getenv("PLAYWRIGHT_CHROMIUM_EXECUTABLE"),
         video_width=_int("VIDEO_WIDTH", 1280),
         video_height=_int("VIDEO_HEIGHT", 720),
         demo_base_url=os.getenv("DEMO_BASE_URL", "http://localhost:8000").rstrip("/"),
+        public_artifact_base_url=(os.getenv("PUBLIC_ARTIFACT_BASE_URL") or "").rstrip("/") or None,
         email_provider=os.getenv("EMAIL_PROVIDER", "console"),
         sender_name=os.getenv("SENDER_NAME", "Your Name"),
         sender_email=os.getenv("SENDER_EMAIL", "you@example.com"),

@@ -25,6 +25,8 @@ class LeadStatus(str, Enum):
     APPROVED = "APPROVED"
     SENT = "SENT"
     SEND_FAILED = "SEND_FAILED"
+    #: Provider neither confirmed nor refused - never auto-retried.
+    SEND_UNCERTAIN = "SEND_UNCERTAIN"
     REJECTED = "REJECTED"
     FAILED = "FAILED"
     SUPPRESSED = "SUPPRESSED"
@@ -46,13 +48,17 @@ ALLOWED_TRANSITIONS: dict[LeadStatus, frozenset[LeadStatus]] = {
     S.SCORED: frozenset({S.SCORED, S.QUALIFIED, S.BACKLOG, S.ENRICHED}),
     S.QUALIFIED: frozenset({S.PERSONALIZED, S.SCORED}),
     S.BACKLOG: frozenset({S.SCORED, S.QUALIFIED}),
-    S.PERSONALIZED: frozenset({S.PERSONALIZED, S.DEMO_READY}),
+    # PERSONALIZED -> REVIEW_REQUIRED is the basic-email branch: leads scoring
+    # 60-79 skip demo and video generation entirely.
+    S.PERSONALIZED: frozenset({S.PERSONALIZED, S.DEMO_READY, S.REVIEW_REQUIRED}),
     S.DEMO_READY: frozenset({S.DEMO_READY, S.VIDEO_READY, S.VIDEO_FAILED, S.REVIEW_REQUIRED}),
     S.VIDEO_READY: frozenset({S.VIDEO_READY, S.REVIEW_REQUIRED}),
     S.VIDEO_FAILED: frozenset({S.VIDEO_READY, S.VIDEO_FAILED, S.REVIEW_REQUIRED}),
     S.REVIEW_REQUIRED: frozenset({S.APPROVED, S.REJECTED, S.REVIEW_REQUIRED}),
-    S.APPROVED: frozenset({S.SENT, S.SEND_FAILED, S.REVIEW_REQUIRED}),
+    S.APPROVED: frozenset({S.SENT, S.SEND_FAILED, S.SEND_UNCERTAIN, S.REVIEW_REQUIRED}),
     S.SEND_FAILED: frozenset({S.REVIEW_REQUIRED, S.APPROVED}),
+    # An uncertain send is resolved by an operator, never by the pipeline.
+    S.SEND_UNCERTAIN: frozenset({S.SENT, S.UNSUBSCRIBED}),
     S.SENT: frozenset({S.UNSUBSCRIBED}),
     S.REJECTED: frozenset({S.REVIEW_REQUIRED}),
     S.FAILED: frozenset({S.ENRICHED, S.SCORED, S.QUALIFIED, S.PERSONALIZED, S.DEMO_READY}),
@@ -69,7 +75,12 @@ STAGE_INPUT_STATES: dict[str, frozenset[LeadStatus]] = {
         {S.PERSONALIZED, S.DEMO_READY, S.VIDEO_READY, S.VIDEO_FAILED, S.REVIEW_REQUIRED, S.FAILED}
     ),
     "VIDEO": frozenset({S.DEMO_READY, S.VIDEO_READY, S.VIDEO_FAILED, S.REVIEW_REQUIRED}),
-    "EMAIL": frozenset({S.DEMO_READY, S.VIDEO_READY, S.VIDEO_FAILED, S.REVIEW_REQUIRED}),
+    "EMAIL": frozenset(
+        {
+            S.PERSONALIZED, S.DEMO_READY, S.VIDEO_READY, S.VIDEO_FAILED,
+            S.REVIEW_REQUIRED, S.APPROVED,
+        }
+    ),
     "SEND": frozenset({S.APPROVED}),
 }
 

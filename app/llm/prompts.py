@@ -7,6 +7,9 @@ import json
 from app.models.schemas import LeadPacket
 from app.util.text import wrap_untrusted
 
+#: Bump when any prompt text changes - it is part of the LLM cache key.
+PROMPT_VERSION = "1"
+
 SYSTEM_INSTRUCTION = """\
 You are a B2B sales-research assistant writing outreach for a healthcare AI
 assistant product. You work only from the supplied lead packet.

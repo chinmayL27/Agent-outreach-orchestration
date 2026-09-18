@@ -52,6 +52,21 @@ def word_count(text: str) -> int:
     return len([w for w in re.split(r"\s+", text.strip()) if w])
 
 
+def excerpt_around(text: str, needle: str, window: int = 120) -> str | None:
+    """The page text surrounding a claim, for reviewer inspection."""
+    if not text or not needle:
+        return None
+    position = text.lower().find(needle.lower()[:60])
+    if position == -1:
+        return None
+    start = max(0, position - window)
+    end = min(len(text), position + len(needle) + window)
+    snippet = " ".join(text[start:end].split())
+    prefix = "\u2026" if start > 0 else ""
+    suffix = "\u2026" if end < len(text) else ""
+    return f"{prefix}{snippet}{suffix}"
+
+
 def truncate(text: str, limit: int) -> str:
     text = text.strip()
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"

@@ -23,6 +23,7 @@ def settings(tmp_path, monkeypatch):
     monkeypatch.setenv("EMAIL_PROVIDER", "console")
     monkeypatch.setenv("CRAWL_DELAY", "0")
     monkeypatch.setenv("RESPECT_ROBOTS", "false")
+    monkeypatch.setenv("ALLOW_FILE_URLS", "true")
     monkeypatch.setenv("SENDER_NAME", "Sam Tester")
     monkeypatch.setenv("SENDER_COMPANY", "Test Co")
     monkeypatch.setenv("SENDER_EMAIL", "sam@testco.example")

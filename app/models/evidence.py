@@ -26,6 +26,8 @@ class Evidence(Base):
 
     source_url: Mapped[str] = mapped_column(String(512))
     page_title: Mapped[str | None] = mapped_column(String(255), default=None)
+    #: Surrounding page text, so a reviewer can judge the claim in context.
+    excerpt: Mapped[str | None] = mapped_column(Text, default=None)
     extracted_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     lead = relationship("Lead", back_populates="evidence")

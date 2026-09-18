@@ -1,7 +1,11 @@
 {
-  "result_count": 4,
+  "result_count": 26,
   "website_hints": {
     "1234567893": "sites/abc-dermatology/index.html",
+    "1245319599": "sites/willow-glen-pediatrics/index.html",
+    "1356420688": "sites/bay-area-dental-care/index.html",
+    "1467531777": "sites/mission-urgent-care/index.html",
+    "1578642866": "sites/golden-gate-family-medicine/index.html",
     "1598765432": "sites/bayview-family-medicine/index.html"
   },
   "results": [
@@ -15,6 +19,13 @@
       },
       "addresses": [
         {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Jose",
+          "state": "CA",
+          "postal_code": "95125"
+        },
+        {
           "address_purpose": "LOCATION",
           "address_1": "1200 Meridian Ave",
           "city": "SAN JOSE",
@@ -24,14 +35,28 @@
         }
       ],
       "taxonomies": [
-        {"desc": "Dermatology", "primary": true},
-        {"desc": "Dermatology, Procedural Dermatology", "primary": false}
+        {
+          "desc": "Dermatology",
+          "primary": true
+        },
+        {
+          "desc": "Dermatology, Procedural Dermatology",
+          "primary": false
+        }
       ]
     },
     {
       "enumeration_type": "NPI-1",
       "number": "1093847561",
-      "basic": {"first_name": "ROBERT", "last_name": "CHEN", "credential": "M.D."},
+      "basic": {
+        "first_name": "ROBERT",
+        "last_name": "CHEN"
+      },
+      "other_names": [
+        {
+          "organization_name": "ABC Dermatology PC"
+        }
+      ],
       "addresses": [
         {
           "address_purpose": "LOCATION",
@@ -42,40 +67,743 @@
           "telephone_number": "408-555-0142"
         }
       ],
-      "taxonomies": [{"desc": "Dermatology", "primary": true}],
-      "other_names": [{"organization_name": "ABC Dermatology PC"}]
+      "taxonomies": [
+        {
+          "desc": "Dermatology",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "1245319599",
+      "basic": {
+        "organization_name": "WILLOW GLEN PEDIATRICS",
+        "authorized_official_first_name": "Maria",
+        "authorized_official_last_name": "Lopez"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Jose",
+          "state": "CA",
+          "postal_code": "95125"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "1500 Lincoln Ave",
+          "city": "SAN JOSE",
+          "state": "CA",
+          "postal_code": "951251234",
+          "telephone_number": "408-555-0210"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Pediatrics",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "1356420688",
+      "basic": {
+        "organization_name": "BAY AREA DENTAL CARE",
+        "authorized_official_first_name": "Steven",
+        "authorized_official_last_name": "Alvarez"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "Oakland",
+          "state": "CA",
+          "postal_code": "94612"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "300 Grand Ave",
+          "city": "OAKLAND",
+          "state": "CA",
+          "postal_code": "946121234",
+          "telephone_number": "510-555-0320"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Dentist",
+          "primary": true
+        },
+        {
+          "desc": "Dentist, General Practice",
+          "primary": false
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "1467531777",
+      "basic": {
+        "organization_name": "MISSION URGENT CARE",
+        "authorized_official_first_name": "Omar",
+        "authorized_official_last_name": "Haddad"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Francisco",
+          "state": "CA",
+          "postal_code": "94110"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "2600 Mission St",
+          "city": "SAN FRANCISCO",
+          "state": "CA",
+          "postal_code": "941101234",
+          "telephone_number": "415-555-0455"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Clinic/Center, Urgent Care",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "1578642866",
+      "basic": {
+        "organization_name": "GOLDEN GATE FAMILY MEDICINE",
+        "authorized_official_first_name": "Helen",
+        "authorized_official_last_name": "Okafor"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Francisco",
+          "state": "CA",
+          "postal_code": "94115"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "2300 Sutter St",
+          "city": "SAN FRANCISCO",
+          "state": "CA",
+          "postal_code": "941151234",
+          "telephone_number": "415-555-0588"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Family Medicine",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-1",
+      "number": "1689753955",
+      "basic": {
+        "first_name": "MARCUS",
+        "last_name": "WEBB"
+      },
+      "other_names": [
+        {
+          "organization_name": "Golden Gate Family Medicine"
+        }
+      ],
+      "addresses": [
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "2300 Sutter St",
+          "city": "San Francisco",
+          "state": "CA",
+          "postal_code": "94115",
+          "telephone_number": "415-555-0588"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Family Medicine",
+          "primary": true
+        }
+      ]
     },
     {
       "enumeration_type": "NPI-2",
       "number": "1598765432",
-      "basic": {"organization_name": "BAYVIEW FAMILY MEDICINE"},
+      "basic": {
+        "organization_name": "BAYVIEW FAMILY MEDICINE"
+      },
       "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "Oakland",
+          "state": "CA",
+          "postal_code": "94612"
+        },
         {
           "address_purpose": "LOCATION",
           "address_1": "1500 Broadway",
           "city": "OAKLAND",
           "state": "CA",
-          "postal_code": "94612",
+          "postal_code": "946121234",
           "telephone_number": "510-555-0110"
         }
       ],
-      "taxonomies": [{"desc": "Family Medicine", "primary": true}]
+      "taxonomies": [
+        {
+          "desc": "Family Medicine",
+          "primary": true
+        }
+      ]
     },
     {
       "enumeration_type": "NPI-2",
       "number": "1700112233",
-      "basic": {"organization_name": "VALLEY REGIONAL HOSPITAL"},
+      "basic": {
+        "organization_name": "VALLEY REGIONAL HOSPITAL"
+      },
       "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Jose",
+          "state": "CA",
+          "postal_code": "95128"
+        },
         {
           "address_purpose": "LOCATION",
           "address_1": "900 Hospital Way",
           "city": "SAN JOSE",
           "state": "CA",
-          "postal_code": "95128",
+          "postal_code": "951281234",
           "telephone_number": "408-555-0900"
         }
       ],
-      "taxonomies": [{"desc": "General Acute Care Hospital", "primary": true}]
+      "taxonomies": [
+        {
+          "desc": "General Acute Care Hospital",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "1811223344",
+      "basic": {
+        "organization_name": "STATE UNIVERSITY STUDENT HEALTH CENTER"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Jose",
+          "state": "CA",
+          "postal_code": "95192"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "1 Campus Dr",
+          "city": "SAN JOSE",
+          "state": "CA",
+          "postal_code": "951921234",
+          "telephone_number": "408-555-0901"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Clinic/Center, Student Health",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "1922334455",
+      "basic": {
+        "organization_name": "COUNTY DEPARTMENT OF PUBLIC HEALTH"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "Oakland",
+          "state": "CA",
+          "postal_code": "94612"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "70 Civic Plaza",
+          "city": "OAKLAND",
+          "state": "CA",
+          "postal_code": "946121234",
+          "telephone_number": "510-555-0902"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Clinic/Center, Public Health, State or Local",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "2033445566",
+      "basic": {
+        "organization_name": "SUNNYVALE SKIN CLINIC"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "Sunnyvale",
+          "state": "CA",
+          "postal_code": "94087"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "800 W El Camino Real",
+          "city": "SUNNYVALE",
+          "state": "CA",
+          "postal_code": "940871234",
+          "telephone_number": "408-555-0777"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Dermatology",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "2144556677",
+      "basic": {
+        "organization_name": "EASTSIDE PEDIATRIC ASSOCIATES"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Jose",
+          "state": "CA",
+          "postal_code": "95116"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "455 Alum Rock Ave",
+          "city": "SAN JOSE",
+          "state": "CA",
+          "postal_code": "951161234",
+          "telephone_number": "408-555-0778"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Pediatrics",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "2255667788",
+      "basic": {
+        "organization_name": "HARBOR DENTAL GROUP"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "Oakland",
+          "state": "CA",
+          "postal_code": "94607"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "77 Jack London Sq",
+          "city": "OAKLAND",
+          "state": "CA",
+          "postal_code": "946071234",
+          "telephone_number": "510-555-0779"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Dentist",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "2366778899",
+      "basic": {
+        "organization_name": "PRESIDIO URGENT CARE"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Francisco",
+          "state": "CA",
+          "postal_code": "94123"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "3300 Lombard St",
+          "city": "SAN FRANCISCO",
+          "state": "CA",
+          "postal_code": "941231234",
+          "telephone_number": "415-555-0780"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Clinic/Center, Urgent Care",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "2477889900",
+      "basic": {
+        "organization_name": "NOE VALLEY FAMILY PRACTICE"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Francisco",
+          "state": "CA",
+          "postal_code": "94114"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "4000 24th St",
+          "city": "SAN FRANCISCO",
+          "state": "CA",
+          "postal_code": "941141234",
+          "telephone_number": "415-555-0781"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Family Medicine",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "2588990011",
+      "basic": {
+        "organization_name": "ALAMEDA DERMATOLOGY PARTNERS"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "Alameda",
+          "state": "CA",
+          "postal_code": "94501"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "2200 Central Ave",
+          "city": "ALAMEDA",
+          "state": "CA",
+          "postal_code": "945011234",
+          "telephone_number": "510-555-0782"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Dermatology",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "2699001122",
+      "basic": {
+        "organization_name": "BERKELEY PEDIATRIC CARE"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "Berkeley",
+          "state": "CA",
+          "postal_code": "94709"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "1800 Shattuck Ave",
+          "city": "BERKELEY",
+          "state": "CA",
+          "postal_code": "947091234",
+          "telephone_number": "510-555-0783"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Pediatrics",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "2700112233",
+      "basic": {
+        "organization_name": "SOUTH BAY DENTAL ARTS"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Jose",
+          "state": "CA",
+          "postal_code": "95118"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "1250 Blossom Hill Rd",
+          "city": "SAN JOSE",
+          "state": "CA",
+          "postal_code": "951181234",
+          "telephone_number": "408-555-0784"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Dentist",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "2811223344",
+      "basic": {
+        "organization_name": "MARINA URGENT CARE CENTER"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Francisco",
+          "state": "CA",
+          "postal_code": "94123"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "2100 Chestnut St",
+          "city": "SAN FRANCISCO",
+          "state": "CA",
+          "postal_code": "941231234",
+          "telephone_number": "415-555-0785"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Clinic/Center, Urgent Care",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "2922334455",
+      "basic": {
+        "organization_name": "TWIN PEAKS FAMILY HEALTH"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Francisco",
+          "state": "CA",
+          "postal_code": "94131"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "500 Portola Dr",
+          "city": "SAN FRANCISCO",
+          "state": "CA",
+          "postal_code": "941311234",
+          "telephone_number": "415-555-0786"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Family Medicine",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "3033445566",
+      "basic": {
+        "organization_name": "LOS GATOS SKIN INSTITUTE"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "Los Gatos",
+          "state": "CA",
+          "postal_code": "95030"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "15 N Santa Cruz Ave",
+          "city": "LOS GATOS",
+          "state": "CA",
+          "postal_code": "950301234",
+          "telephone_number": "408-555-0787"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Dermatology",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "3144556677",
+      "basic": {
+        "organization_name": "RICHMOND DISTRICT PEDIATRICS"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Francisco",
+          "state": "CA",
+          "postal_code": "94118"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "700 Clement St",
+          "city": "SAN FRANCISCO",
+          "state": "CA",
+          "postal_code": "941181234",
+          "telephone_number": "415-555-0788"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Pediatrics",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "3255667788",
+      "basic": {
+        "organization_name": "TEMESCAL DENTAL STUDIO"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "Oakland",
+          "state": "CA",
+          "postal_code": "94609"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "4200 Telegraph Ave",
+          "city": "OAKLAND",
+          "state": "CA",
+          "postal_code": "946091234",
+          "telephone_number": "510-555-0789"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Dentist",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "3366778899",
+      "basic": {
+        "organization_name": "CAMBRIAN FAMILY HEALTH"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Jose",
+          "state": "CA",
+          "postal_code": "95124"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "2900 Union Ave",
+          "city": "SAN JOSE",
+          "state": "CA",
+          "postal_code": "951241234",
+          "telephone_number": "408-555-0790"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Family Medicine",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "3477889900",
+      "basic": {
+        "organization_name": "POTRERO HILL URGENT CARE"
+      },
+      "addresses": [
+        {
+          "address_purpose": "MAILING",
+          "address_1": "PO Box 9",
+          "city": "San Francisco",
+          "state": "CA",
+          "postal_code": "94107"
+        },
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "1300 18th St",
+          "city": "SAN FRANCISCO",
+          "state": "CA",
+          "postal_code": "941071234",
+          "telephone_number": "415-555-0791"
+        }
+      ],
+      "taxonomies": [
+        {
+          "desc": "Clinic/Center, Urgent Care",
+          "primary": true
+        }
+      ]
     }
   ]
 }

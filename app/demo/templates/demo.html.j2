@@ -84,6 +84,15 @@
     background: rgba(255,255,255,.12); font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
   }
   .foot { margin-top: 26px; color: var(--muted); font-size: 12px; }
+  /* Caption strip: the MVP's accessibility track for the recorded video. */
+  .caption {
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 26px;
+    max-width: min(900px, 86vw); padding: 12px 20px; border-radius: 10px;
+    background: rgba(9, 14, 20, .88); color: #f8fafc; font-size: 19px;
+    line-height: 1.35; text-align: center; z-index: 30; display: none;
+    box-shadow: 0 8px 30px rgba(0,0,0,.28);
+  }
+  .caption.show { display: block; }
 </style>
 </head>
 <body>
@@ -139,6 +148,8 @@
     </aside>
   </div>
 </div>
+
+<div class="caption" id="caption"></div>
 
 <div class="overlay" id="overlay-intro">
   <div>
@@ -237,11 +248,18 @@
     if (event.key === "Enter") document.getElementById("chat-send").click();
   });
 
+  function caption(text) {
+    const node = document.getElementById("caption");
+    node.textContent = text || "";
+    node.classList.toggle("show", Boolean(text));
+  }
+
   // Control surface used by the video recorder (Playwright drives these).
   window.demo = {
     config: CONFIG,
     ask,
     greet,
+    caption,
     showIntro: (title, sub) => overlay("overlay-intro", title || CONFIG.intro_text, sub || CONFIG.business_name, true),
     hideIntro: () => document.getElementById("overlay-intro").classList.remove("show"),
     showOutro: (title, sub) => overlay("overlay-outro", title || CONFIG.outro_text, sub || CONFIG.cta_text, true),

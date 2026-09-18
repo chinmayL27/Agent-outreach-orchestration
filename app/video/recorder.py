@@ -15,6 +15,7 @@ from pathlib import Path
 from app.config import Settings, get_settings
 from app.demo.renderer import demo_file_url
 from app.models.schemas import VideoScript
+from app.video.script import caption_for
 from app.video.ffmpeg import FFmpegMissing, probe_duration, transcode_to_mp4
 
 
@@ -52,6 +53,7 @@ def record_demo(
     page_url: str | None = None,
     settings: Settings | None = None,
     speed: float = 1.0,
+    config=None,
 ) -> RecordingResult:
     """Record the demo and return the final artifact path.
 
@@ -107,6 +109,14 @@ def record_demo(
                 # count against their own beat rather than extending the video.
                 budget = beat(segment.seconds) - (setup_elapsed if index == 0 else 0.0)
 
+                if config is not None:
+                    # Demo pages rendered by an older version have no caption
+                    # track; their recording should still succeed.
+                    page.evaluate(
+                        "text => window.demo.caption && window.demo.caption(text)",
+                        caption_for(segment, config),
+                    )
+
                 if segment.kind == "intro":
                     page.evaluate("text => window.demo.showIntro(text)", segment.text)
                 elif segment.kind == "question":
@@ -128,6 +138,8 @@ def record_demo(
                     page.wait_for_timeout(remaining * 1000)
                 if segment.kind == "intro":
                     page.evaluate("window.demo.hideIntro()")
+            if config is not None:
+                page.evaluate("window.demo.caption && window.demo.caption('')")
         finally:
             video = page.video
             context.close()

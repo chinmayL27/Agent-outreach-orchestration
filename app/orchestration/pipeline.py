@@ -8,7 +8,10 @@ stops the batch.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -23,14 +26,24 @@ from app.extraction.nppes import LeadQuery, RawLead, build_source
 from app.extraction.normalize import merge_provider_names
 from app.extraction.website import resolve_website
 from app.llm.base import LLMError, LLMProvider
+from app.llm.prompts import PROMPT_VERSION
 from app.llm.factory import get_provider
 from app.models.campaign import CampaignConfig
 from app.models.evidence import Evidence
 from app.models.lead import Lead
-from app.models.outreach import DemoArtifact, EmailDraft, Personalization, SendRecord, VideoArtifact
-from app.models.schemas import DemoConfig
+from app.models.outreach import (
+    CampaignRun,
+    LLMCacheEntry,
+    DemoArtifact,
+    EmailDraft,
+    Personalization,
+    SendRecord,
+    VideoArtifact,
+)
+from app.models.schemas import DemoConfig, PersonalizationOutput
 from app.observability.events import log_event, stage_timer
 from app.outreach import suppression
+from app.outreach.publisher import ArtifactPublisher, get_publisher, is_publicly_reachable
 from app.outreach.approval import pending as pending_reviews  # re-exported for the CLI
 from app.outreach.email_generator import render_email
 from app.outreach.sender import EmailProvider, get_email_provider
@@ -77,6 +90,19 @@ class StageSummary:
         )
 
 
+def fingerprint(*parts: Any) -> str:
+    """Stable hash of a stage's inputs, recorded on each stage event."""
+    payload = json.dumps(parts, sort_keys=True, default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def file_hash(path: Path) -> str | None:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()[:32]
+    except OSError:  # pragma: no cover - defensive
+        return None
+
+
 def _eligible(lead: Lead, stage: str, force: bool) -> bool:
     if force:
         return True
@@ -109,6 +135,7 @@ def _upsert_evidence(session: Session, lead: Lead, items: Iterable[Any]) -> int:
                 value=item.value,
                 source_url=item.source_url,
                 page_title=item.page_title,
+                excerpt=getattr(item, "excerpt", None),
             )
         )
         existing.add(key)
@@ -206,7 +233,13 @@ def enrich(
                 )
                 continue
             try:
-                with stage_timer(session, stage="ENRICHMENT", lead_id=lead.id, campaign_id=campaign.id) as event:
+                with stage_timer(
+                    session,
+                    stage="ENRICHMENT",
+                    lead_id=lead.id,
+                    campaign_id=campaign.id,
+                    input_fingerprint=fingerprint(lead.website, settings.max_pages_per_site),
+                ) as event:
                     outcome = enrich_website(
                         lead.website, lead.organization_name, settings=settings, fetcher=fetcher
                     )
@@ -315,12 +348,35 @@ def personalize(
             continue
         summary.processed += 1
         try:
-            with stage_timer(session, stage="PERSONALIZATION", lead_id=lead.id, campaign_id=campaign.id) as event:
-                evidence = list(
-                    session.execute(select(Evidence).where(Evidence.lead_id == lead.id)).scalars()
-                )
-                packet = build_packet(lead, evidence, campaign, settings)
-                output, report = generate_personalization(packet, provider, settings)
+            evidence = list(
+                session.execute(select(Evidence).where(Evidence.lead_id == lead.id)).scalars()
+            )
+            packet = build_packet(lead, evidence, campaign, settings)
+            cache_key = fingerprint(
+                packet.model_dump(), campaign.product.model_dump(), PROMPT_VERSION, provider.name
+            )
+            with stage_timer(
+                session,
+                stage="PERSONALIZATION",
+                lead_id=lead.id,
+                campaign_id=campaign.id,
+                input_fingerprint=cache_key,
+            ) as event:
+                cached = session.get(LLMCacheEntry, cache_key)
+                if cached is not None and not force:
+                    output = PersonalizationOutput.model_validate(cached.payload)
+                    report = None
+                else:
+                    output, report = generate_personalization(packet, provider, settings)
+                    session.merge(
+                        LLMCacheEntry(
+                            key=cache_key,
+                            lead_id=lead.id,
+                            provider=provider.name,
+                            schema_name=PersonalizationOutput.__name__,
+                            payload=output.model_dump(),
+                        )
+                    )
 
                 existing = session.execute(
                     select(Personalization).where(Personalization.lead_id == lead.id)
@@ -341,7 +397,11 @@ def personalize(
                     session.add(record)
 
                 lead.set_status(LeadStatus.PERSONALIZED)
-                event["extra"] = {"provider": provider.name, "grounded": report.ok}
+                event["extra"] = {
+                    "provider": provider.name,
+                    "grounded": report.ok if report is not None else True,
+                    "cached": report is None,
+                }
                 summary.succeeded += 1
         except (LLMError, ValueError) as exc:
             lead.set_status(LeadStatus.FAILED, detail=f"personalization: {exc}")
@@ -371,6 +431,8 @@ def build_demos(
             LeadStatus.VIDEO_READY,
             LeadStatus.VIDEO_FAILED,
             LeadStatus.REVIEW_REQUIRED,
+            # Rebuilding an approved package is allowed, but it costs the approval.
+            LeadStatus.APPROVED,
         ]
         if force
         else [LeadStatus.PERSONALIZED],
@@ -378,6 +440,12 @@ def build_demos(
     for lead in leads:
         if not _eligible(lead, "DEMO", force):
             summary.skipped += 1
+            continue
+        # Basic-tier leads (60-79) skip demo and video and go straight to the
+        # review queue with an email only (TDD s7).
+        if lead.tier != "premium":
+            summary.skipped += 1
+            summary.note(f"{lead.organization_name}: basic tier, email only")
             continue
         summary.processed += 1
         try:
@@ -395,9 +463,13 @@ def build_demos(
                     select(DemoArtifact).where(DemoArtifact.lead_id == lead.id)
                 ).scalar_one_or_none()
                 artifact = existing or DemoArtifact(lead_id=lead.id)
+                new_hash = file_hash(html_path)
+                if existing is not None and existing.content_hash != new_hash:
+                    artifact.version += 1
                 artifact.config = config.model_dump()
                 artifact.config_path = str(config_path)
                 artifact.html_path = str(html_path)
+                artifact.content_hash = new_hash
                 artifact.url = demo_url(lead.id, settings)
                 if existing is None:
                     session.add(artifact)
@@ -470,11 +542,33 @@ def render_videos(
                     page_url=demo_file_url(lead.id, settings),
                     settings=settings,
                     speed=speed,
+                    config=config,
                 )
                 video.path = str(result.path)
                 video.container = result.container
                 video.duration_seconds = result.duration_seconds
-                video.error = "; ".join(result.warnings) or None
+                video.content_hash = file_hash(result.path)
+                if existing is not None:
+                    video.version += 1
+
+                # Inspect the artifact rather than trusting the recorder.
+                playable = result.path.exists() and result.path.stat().st_size > 10_000
+                video.playable = playable
+                expected = script.target_seconds / max(speed, 0.01)
+                tolerance = max(5.0, expected * 0.15)
+                video.duration_in_range = (
+                    result.duration_seconds is not None
+                    and abs(result.duration_seconds - expected) <= tolerance
+                )
+                warnings = list(result.warnings)
+                if not playable:
+                    raise RuntimeError("recording produced no playable file")
+                if not video.duration_in_range:
+                    warnings.append(
+                        f"duration {result.duration_seconds}s outside the expected "
+                        f"{expected:.0f}s +/- {tolerance:.0f}s window"
+                    )
+                video.error = "; ".join(warnings) or None
                 # Re-recording a lead that is already queued for review must not
                 # pull it back out of the queue.
                 if lead.lead_status is not LeadStatus.REVIEW_REQUIRED:
@@ -482,7 +576,8 @@ def render_videos(
                 event["extra"] = {
                     "container": result.container,
                     "seconds": result.duration_seconds,
-                    "warnings": result.warnings,
+                    "in_range": video.duration_in_range,
+                    "warnings": warnings,
                 }
                 summary.succeeded += 1
         except Exception as exc:  # noqa: BLE001 - the demo survives a failed recording
@@ -503,15 +598,31 @@ def build_emails(
     *,
     force: bool = False,
     settings: Settings | None = None,
+    publisher: ArtifactPublisher | None = None,
 ) -> StageSummary:
     settings = settings or get_settings()
+    publisher = publisher or get_publisher(settings)
     summary = StageSummary(stage="EMAIL")
     leads = _leads_for(
         session,
         campaign.id,
-        [LeadStatus.DEMO_READY, LeadStatus.VIDEO_READY, LeadStatus.VIDEO_FAILED, LeadStatus.REVIEW_REQUIRED]
+        [
+            LeadStatus.PERSONALIZED,
+            LeadStatus.DEMO_READY,
+            LeadStatus.VIDEO_READY,
+            LeadStatus.VIDEO_FAILED,
+            LeadStatus.REVIEW_REQUIRED,
+            # Rebuilding an approved package is allowed, but it costs the approval.
+            LeadStatus.APPROVED,
+        ]
         if force
-        else [LeadStatus.DEMO_READY, LeadStatus.VIDEO_READY, LeadStatus.VIDEO_FAILED],
+        # PERSONALIZED here is the basic-tier branch: no demo, no video.
+        else [
+            LeadStatus.PERSONALIZED,
+            LeadStatus.DEMO_READY,
+            LeadStatus.VIDEO_READY,
+            LeadStatus.VIDEO_FAILED,
+        ],
     )
     for lead in leads:
         if not _eligible(lead, "EMAIL", force):
@@ -534,17 +645,31 @@ def build_emails(
                 video = session.execute(
                     select(VideoArtifact).where(VideoArtifact.lead_id == lead.id)
                 ).scalar_one_or_none()
-                video_note = None
-                if video is not None and video.path:
-                    video_note = f"60-second walkthrough attached: {Path(video.path).name}"
                 demo = session.execute(
                     select(DemoArtifact).where(DemoArtifact.lead_id == lead.id)
                 ).scalar_one_or_none()
 
+                # Publishing turns local artifacts into links a clinic can open.
+                published = publisher.publish(
+                    lead.id,
+                    Path(demo.html_path) if demo and demo.html_path else None,
+                    Path(video.path) if video and video.path else None,
+                )
+                if demo is not None and published.demo_url:
+                    demo.published_url = published.demo_url
+                if video is not None and published.video_url:
+                    video.published_url = published.video_url
+
+                video_note = None
+                if published.video_url:
+                    video_note = f"60-second walkthrough: {published.video_url}"
+                elif video is not None and video.path:
+                    video_note = f"60-second walkthrough attached: {Path(video.path).name}"
+
                 rendered = render_email(
                     lead,
                     personalization,
-                    demo_url=demo.url if demo else None,
+                    demo_url=published.demo_url or (demo.published_url if demo else None),
                     video_note=video_note,
                     settings=settings,
                 )
@@ -557,16 +682,39 @@ def build_emails(
                     event["status"] = "SKIPPED"
                     event["detail"] = "human-edited draft preserved"
                     continue
+                material_change = existing is not None and (
+                    existing.recipient != rendered.recipient
+                    or existing.subject != rendered.subject
+                    or existing.body_text != rendered.body_text
+                )
                 draft.recipient = rendered.recipient
                 draft.subject = rendered.subject
                 draft.body_text = rendered.body_text
                 draft.body_html = rendered.body_html
                 draft.word_count = rendered.word_count
+                draft.demo_url = rendered.demo_url
+                draft.links_public = rendered.links_public
+                if material_change:
+                    # Regenerating the package invalidates a prior approval.
+                    draft.invalidate_approval()
                 if existing is None:
                     session.add(draft)
 
-                lead.set_status(LeadStatus.REVIEW_REQUIRED)
-                event["extra"] = {"recipient": rendered.recipient, "words": rendered.word_count}
+                # An untouched package keeps its approval; a changed one goes back
+                # to a human.
+                if lead.lead_status is not LeadStatus.APPROVED or material_change:
+                    lead.set_status(LeadStatus.REVIEW_REQUIRED)
+                event["extra"] = {
+                    "recipient": rendered.recipient,
+                    "words": rendered.word_count,
+                    "links_public": rendered.links_public,
+                    "package_version": draft.package_version,
+                }
+                if not rendered.links_public:
+                    summary.note(
+                        f"{lead.organization_name}: no public demo link "
+                        "(set PUBLIC_ARTIFACT_BASE_URL before sending)"
+                    )
                 summary.succeeded += 1
         except Exception as exc:  # noqa: BLE001 - includes EmailValidationError
             lead.set_status(LeadStatus.FAILED, detail=f"email: {exc}")
@@ -601,18 +749,47 @@ def send_approved(
             summary.skipped += 1
             summary.note(f"{lead.organization_name}: no approved draft")
             continue
+        # The approval must match the exact package version being sent.
+        if not draft.approval_is_current:
+            lead.set_status(LeadStatus.REVIEW_REQUIRED, detail="package changed after approval")
+            log_event(
+                session, stage="SEND", status="STALE_APPROVAL", lead_id=lead.id,
+                detail=f"approved v{draft.approved_package_version}, current v{draft.package_version}",
+            )
+            summary.skipped += 1
+            summary.note(f"{lead.organization_name}: approval is stale, back to review")
+            continue
+        # A real provider must not mail localhost or file:// links.
+        if getattr(provider, "requires_public_links", False) and not draft.links_public:
+            log_event(
+                session, stage="SEND", status="BLOCKED", lead_id=lead.id,
+                detail="artifact links are not publicly reachable",
+            )
+            summary.skipped += 1
+            summary.note(
+                f"{lead.organization_name}: demo/video links are not public "
+                "(configure PUBLIC_ARTIFACT_BASE_URL)"
+            )
+            continue
         # The suppression check is the last thing before delivery, always.
         if suppression.is_suppressed(session, draft.recipient):
             lead.set_status(LeadStatus.SUPPRESSED, detail="recipient on suppression list")
             log_event(session, stage="SEND", status="SUPPRESSED", lead_id=lead.id)
             summary.skipped += 1
             continue
-        already_sent = session.execute(
-            select(SendRecord).where(SendRecord.lead_id == lead.id, SendRecord.status == "SENT")
-        ).scalar_one_or_none()
-        if already_sent is not None:
+        # An uncertain outcome counts as "may already be delivered": never
+        # resend it automatically (TDD s7/s17).
+        prior = session.execute(
+            select(SendRecord).where(
+                SendRecord.lead_id == lead.id,
+                SendRecord.recipient == draft.recipient,
+                SendRecord.package_version == draft.package_version,
+                SendRecord.status.in_(["SENT", "SEND_UNCERTAIN"]),
+            )
+        ).first()
+        if prior is not None:
             summary.skipped += 1
-            summary.note(f"{lead.organization_name}: already sent, not resending")
+            summary.note(f"{lead.organization_name}: already attempted, not resending")
             continue
 
         attachments: list[Path] = []
@@ -635,6 +812,7 @@ def send_approved(
                     subject=draft.subject,
                     provider=result.provider,
                     message_id=result.message_id,
+                    package_version=draft.package_version,
                     status=result.status,
                     error=result.error,
                 )
@@ -642,6 +820,15 @@ def send_approved(
             if result.ok:
                 lead.set_status(LeadStatus.SENT)
                 summary.succeeded += 1
+            elif result.uncertain:
+                lead.set_status(LeadStatus.SEND_UNCERTAIN, detail=result.error)
+                event["status"] = "UNCERTAIN"
+                event["detail"] = result.error
+                summary.failed += 1
+                summary.note(
+                    f"{lead.organization_name}: delivery uncertain, needs an operator "
+                    f"decision ({result.error})"
+                )
             else:
                 lead.set_status(LeadStatus.SEND_FAILED, detail=result.error)
                 event["status"] = "FAILURE"
@@ -671,6 +858,15 @@ def run_campaign(
     human approves first.
     """
     settings = settings or get_settings()
+    run = CampaignRun(
+        campaign_id=campaign.id,
+        name=campaign.name,
+        config=campaign.model_dump(),
+        status="RUNNING",
+    )
+    session.add(run)
+    session.flush()
+
     summaries = [
         discover(session, campaign),
         enrich(session, campaign, force=force, settings=settings),
@@ -689,4 +885,16 @@ def run_campaign(
             )
         )
     summaries.append(build_emails(session, campaign, force=force, settings=settings))
+
+    run.finished_at = datetime.now(timezone.utc)
+    run.status = "FAILED" if any(s.failed for s in summaries) else "COMPLETED"
+    run.summary = {
+        item.stage: {
+            "processed": item.processed,
+            "succeeded": item.succeeded,
+            "failed": item.failed,
+            "skipped": item.skipped,
+        }
+        for item in summaries
+    }
     return summaries
