@@ -1,0 +1,52 @@
+# Live campaign: discovers real practices from the CMS NPI Registry.
+#
+# NPPES has no website field, so map clinic name -> website here (or import a
+# CSV with `source: csv`).  Leads without a website stay ENRICHMENT_PARTIAL
+# instead of being enriched against a guessed domain.
+campaign:
+  id: sj-derm-2026
+  name: San Jose dermatology
+
+  source: nppes            # nppes | fixture | csv
+  # csv_path: leads.csv
+
+  specialties:
+    - Dermatology
+
+  geography:
+    city: San Jose
+    state: CA
+
+  practice_size:
+    min_providers: 1
+    max_providers: 30
+
+  exclude_keywords:
+    - hospital
+    - university
+    - medical center
+    - department of
+
+  maximum_leads: 20
+
+  website_map: {}
+  #   ABC Dermatology: https://abcdermatology.example
+
+  scoring:
+    target_specialty: 25
+    provider_count_in_range: 15
+    multiple_locations: 10
+    has_online_booking: 10
+    no_chatbot: 20
+    extensive_faq: 10
+    public_email: 10
+    faq_threshold: 5
+    premium_threshold: 80
+    basic_threshold: 60
+
+  product:
+    name: AI Patient Assistant
+    capabilities:
+      - answering common patient questions from your published website content
+      - routing patients to the right service or location
+      - guiding patients into your existing appointment request flow

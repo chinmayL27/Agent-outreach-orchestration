@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.db
+*.sqlite3
+artifacts/demos/*
+artifacts/videos/*
+artifacts/reports/*
+artifacts/outbox/*
+!artifacts/**/.gitkeep
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/

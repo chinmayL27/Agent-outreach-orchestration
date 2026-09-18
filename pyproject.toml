@@ -1,0 +1,36 @@
+[project]
+name = "outreach-agent"
+version = "0.1.0"
+description = "Local-first healthcare outreach orchestrator: discover -> enrich -> score -> personalize -> demo -> video -> review -> send"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.6",
+    "SQLAlchemy>=2.0",
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "Jinja2>=3.1",
+    "typer>=0.12",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+video = ["playwright>=1.44"]
+web = ["fastapi>=0.110", "uvicorn>=0.29"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+outreach = "app.main:app"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+"app.demo" = ["templates/*.j2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

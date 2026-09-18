@@ -1,0 +1,81 @@
+{
+  "result_count": 4,
+  "website_hints": {
+    "1234567893": "sites/abc-dermatology/index.html",
+    "1598765432": "sites/bayview-family-medicine/index.html"
+  },
+  "results": [
+    {
+      "enumeration_type": "NPI-2",
+      "number": "1234567893",
+      "basic": {
+        "organization_name": "ABC DERMATOLOGY, P.C.",
+        "authorized_official_first_name": "Jane",
+        "authorized_official_last_name": "Smith"
+      },
+      "addresses": [
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "1200 Meridian Ave",
+          "city": "SAN JOSE",
+          "state": "CA",
+          "postal_code": "951251234",
+          "telephone_number": "408-555-0142"
+        }
+      ],
+      "taxonomies": [
+        {"desc": "Dermatology", "primary": true},
+        {"desc": "Dermatology, Procedural Dermatology", "primary": false}
+      ]
+    },
+    {
+      "enumeration_type": "NPI-1",
+      "number": "1093847561",
+      "basic": {"first_name": "ROBERT", "last_name": "CHEN", "credential": "M.D."},
+      "addresses": [
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "1200 Meridian Ave",
+          "city": "San Jose",
+          "state": "CA",
+          "postal_code": "95125",
+          "telephone_number": "408-555-0142"
+        }
+      ],
+      "taxonomies": [{"desc": "Dermatology", "primary": true}],
+      "other_names": [{"organization_name": "ABC Dermatology PC"}]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "1598765432",
+      "basic": {"organization_name": "BAYVIEW FAMILY MEDICINE"},
+      "addresses": [
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "1500 Broadway",
+          "city": "OAKLAND",
+          "state": "CA",
+          "postal_code": "94612",
+          "telephone_number": "510-555-0110"
+        }
+      ],
+      "taxonomies": [{"desc": "Family Medicine", "primary": true}]
+    },
+    {
+      "enumeration_type": "NPI-2",
+      "number": "1700112233",
+      "basic": {"organization_name": "VALLEY REGIONAL HOSPITAL"},
+      "addresses": [
+        {
+          "address_purpose": "LOCATION",
+          "address_1": "900 Hospital Way",
+          "city": "SAN JOSE",
+          "state": "CA",
+          "postal_code": "95128",
+          "telephone_number": "408-555-0900"
+        }
+      ],
+      "taxonomies": [{"desc": "General Acute Care Hospital", "primary": true}]
+    }
+  ]
+}
