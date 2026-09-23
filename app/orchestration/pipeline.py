@@ -23,7 +23,12 @@ from app.demo.config_generator import build_demo_config, write_demo_config
 from app.demo.renderer import demo_file_url, demo_url, write_demo_html
 from app.enrichment.enricher import enrich_website
 from app.extraction.nppes import LeadQuery, RawLead, build_source
-from app.extraction.normalize import merge_provider_names
+from app.extraction.normalize import (
+    domain_of,
+    domain_of_email,
+    merge_provider_names,
+    name_from_domain,
+)
 from app.extraction.website import resolve_website
 from app.llm.base import LLMError, LLMProvider
 from app.llm.prompts import PROMPT_VERSION
@@ -146,15 +151,60 @@ def _upsert_evidence(session: Session, lead: Lead, items: Iterable[Any]) -> int:
 # ---------------------------------------------------------------------------
 # Stage 1 - discovery
 # ---------------------------------------------------------------------------
+#: Facts a source may assert about a lead, with the Evidence attribute they map
+#: to.  Asserted facts are attributed to the source file, never to a crawl.
+ASSERTED_FACTS = (("services", "service"), ("provider_names", "provider"), ("emails", "public_email"))
+
+
+def asserted_evidence(raw: RawLead) -> list[Evidence]:
+    """Evidence rows for facts the source stated (e.g. CSV columns).
+
+    Copy supplied by the operator is still copy about the clinic, so it needs a
+    provenance trail like anything else - it just cites the file rather than a
+    page, so a reviewer can tell an assertion from an observation.
+    """
+    if not raw.evidence_source:
+        return []
+    rows: list[Evidence] = []
+    seen: set[tuple[str, str]] = set()
+    for field_name, attribute in ASSERTED_FACTS:
+        for value in getattr(raw, field_name, []) or []:
+            key = (attribute, str(value))
+            if not value or key in seen:
+                continue
+            seen.add(key)
+            rows.append(
+                Evidence(
+                    attribute=attribute,
+                    value=str(value),
+                    source_url=raw.evidence_source,
+                    page_title="operator-supplied import",
+                )
+            )
+    return rows
+
+
+def _has_provisional_name(lead: Lead) -> bool:
+    """True when the lead's name was derived from its domain, not observed.
+
+    Import has no place to record this, so it is re-derived: if the stored name
+    is exactly what the domain would produce, nothing better was ever known.
+    """
+    domain = domain_of(lead.website) or domain_of_email(lead.primary_email)
+    derived = name_from_domain(domain)
+    return bool(derived) and lead.organization_name.strip().lower() == derived.strip().lower()
+
+
 def raw_to_lead(raw: RawLead, campaign: CampaignConfig) -> Lead:
     website = resolve_website(raw.organization_name, campaign, raw.website, raw.emails)
-    return Lead(
+    lead = Lead(
         campaign_id=campaign.id,
         organization_name=raw.organization_name,
         dedupe_key=raw.key,
         website=website,
         provider_names=list(raw.provider_names),
         specialty=list(raw.specialty),
+        services=list(raw.services),
         city=raw.city,
         state=raw.state,
         postal_code=raw.postal_code,
@@ -165,6 +215,9 @@ def raw_to_lead(raw: RawLead, campaign: CampaignConfig) -> Lead:
         source=raw.source,
         status=LeadStatus.DISCOVERED.value,
     )
+    for item in asserted_evidence(raw):
+        lead.evidence.append(item)
+    return lead
 
 
 def discover(session: Session, campaign: CampaignConfig) -> StageSummary:
@@ -179,13 +232,17 @@ def discover(session: Session, campaign: CampaignConfig) -> StageSummary:
             ).scalar_one_or_none()
             if existing is not None:
                 summary.skipped += 1
-                # Backfill a website that only became known later.
+                # Backfill details that only became known later (a re-import of
+                # the same list with an email or website filled in).
                 if not existing.website:
                     website = resolve_website(
                         existing.organization_name, campaign, raw.website, existing.emails
                     )
                     if website:
                         existing.website = website
+                new_emails = [e for e in raw.emails if e not in (existing.emails or [])]
+                if new_emails:
+                    existing.emails = list(existing.emails or []) + new_emails
                 continue
             session.add(raw_to_lead(raw, campaign))
             summary.succeeded += 1
@@ -194,6 +251,12 @@ def discover(session: Session, campaign: CampaignConfig) -> StageSummary:
             "duplicates": summary.skipped,
             "source": source.name,
         }
+        report = getattr(source, "report", None)
+        if report is not None:
+            for note in report.notes():
+                summary.note(note)
+            event["extra"]["rows_read"] = report.rows
+            event["extra"]["rows_skipped"] = report.skipped_total
     return summary
 
 
@@ -254,9 +317,17 @@ def enrich(
                         summary.failed += 1
                         continue
                     for key, value in outcome.fields.items():
-                        if key == "emails":
+                        if key == "site_name":
+                            # Only a domain-derived placeholder gets replaced;
+                            # a real name from the source always wins.
+                            if value and _has_provisional_name(lead):
+                                lead.organization_name = value
+                        elif key == "emails":
                             merged = list(dict.fromkeys(list(lead.emails or []) + list(value)))
                             lead.emails = merged
+                        elif key == "services":
+                            # Keep services the operator supplied on import.
+                            lead.services = list(dict.fromkeys(list(lead.services or []) + list(value)))
                         elif key == "provider_names":
                             lead.provider_names = merge_provider_names(
                                 list(lead.provider_names or []), list(value)

@@ -94,3 +94,47 @@ def merge_provider_names(existing: list[str], new: list[str]) -> list[str]:
         if current is None or len(name) > len(current):
             merged[key] = name
     return list(merged.values())
+
+
+#: Mailbox providers whose domain says nothing about the practice's website.
+FREEMAIL_DOMAINS = {
+    "gmail.com", "googlemail.com", "yahoo.com", "ymail.com", "hotmail.com",
+    "outlook.com", "live.com", "msn.com", "aol.com", "icloud.com", "me.com",
+    "mac.com", "comcast.net", "att.net", "verizon.net", "sbcglobal.net",
+    "protonmail.com", "proton.me", "gmx.com", "mail.com", "zoho.com",
+}
+
+
+def is_freemail(domain: str | None) -> bool:
+    return (domain or "").lower().removeprefix("www.") in FREEMAIL_DOMAINS
+
+
+def domain_of_email(email: str | None) -> str | None:
+    """The domain half of an address, or None for a free mailbox provider."""
+    if not email or "@" not in email:
+        return None
+    domain = email.rsplit("@", 1)[-1].strip().lower().removeprefix("www.")
+    if not domain or "." not in domain or is_freemail(domain):
+        return None
+    return domain
+
+
+def name_from_domain(domain: str | None) -> str | None:
+    """A provisional display name for a lead we only know by its domain.
+
+    `cedar-peds-clinic.example` -> "Cedar Peds Clinic".  This is a placeholder,
+    not a fact: enrichment replaces it with the name the site calls itself.
+    """
+    host = (domain or "").strip().lower().removeprefix("www.")
+    if not host or "." not in host:
+        return None
+    labels = host.split(".")
+    # Drop the public suffix so the registrable label is left: "example.com"
+    # and "example.co.uk" both reduce to "example".
+    if len(labels) >= 3 and labels[-2] in {"co", "com", "org", "net", "gov", "ac"} and len(labels[-1]) == 2:
+        labels = labels[:-2]
+    elif len(labels) >= 2:
+        labels = labels[:-1]
+    stem = labels[-1] if labels else ""
+    words = [word for word in _SPACES.split(_PUNCT.sub(" ", stem)) if word]
+    return " ".join(word.capitalize() for word in words) or None

@@ -95,6 +95,46 @@ def discover(
         _echo_summary(pipeline.discover(session, campaign))
 
 
+@app.command("import-csv")
+def import_csv(
+    csv_file: Path = typer.Argument(..., help="CSV of emails and basic practice information."),
+    campaign_file: Optional[Path] = typer.Option(None, "--campaign-file", help="campaign.yaml (default: ./campaign.yaml)"),
+    limit: Optional[int] = typer.Option(None, help="Override maximum_leads."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show the column mapping and parsed leads; write nothing."),
+) -> None:
+    """Import your own lead list, then enrich it like any other lead.
+
+    Rows need a website or a work email; the email's domain is the site that
+    gets crawled for services.  Campaign specialty/geography filters do not
+    re-filter a list you chose yourself.
+    """
+    campaign = _load_campaign(campaign_file)
+    campaign.source = "csv"
+    campaign.csv_path = str(Path(csv_file).resolve())
+    if limit:
+        campaign.maximum_leads = limit
+
+    if dry_run:
+        from app.extraction.csv_source import preview
+        from app.extraction.nppes import LeadQuery
+
+        leads, report = preview(campaign.csv_path, LeadQuery.from_campaign(campaign))
+        typer.secho(f"columns mapped: {', '.join(report.mapped_fields) or '(none)'}", fg=typer.colors.CYAN)
+        for note in report.notes():
+            typer.echo(f"  {note}")
+        for lead in leads[:20]:
+            site = lead.website or "(no website - will stay ENRICHMENT_PARTIAL)"
+            typer.echo(f"  - {lead.organization_name}  {site}  {', '.join(lead.emails) or '(no email)'}")
+        if len(leads) > 20:
+            typer.echo(f"  ... and {len(leads) - 20} more")
+        typer.secho("dry run: nothing written", fg=typer.colors.YELLOW)
+        return
+
+    with session_scope() as session:
+        _echo_summary(pipeline.discover(session, campaign))
+    typer.secho("next: outreach enrich && outreach score", fg=typer.colors.CYAN)
+
+
 @app.command()
 def enrich(
     campaign_file: Optional[Path] = typer.Argument(None),

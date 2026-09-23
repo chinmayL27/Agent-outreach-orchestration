@@ -135,7 +135,7 @@ attempted.
 ### Automated suite
 
 ```bash
-pytest -q                      # 94 tests, ~9 seconds
+pytest -q                      # 106 tests, ~9 seconds
 pytest -q --durations=5        # see where the time goes
 pytest tests/test_pipeline_e2e.py -q -v   # the MVP criteria, named individually
 ```
@@ -148,6 +148,7 @@ the send path is exercised through recording providers only.
 | File | Covers |
 |---|---|
 | `test_extraction.py` | registry parsing, organization/provider identity, dedupe keys, exclusions, website resolution |
+| `test_csv_import.py` | CSV header aliasing, email-only rows, list-not-refiltered, merge/dedupe, import → crawl → services |
 | `test_nppes_client.py` | live-API query construction and pagination, against a mock transport |
 | `test_email_and_scoring.py` | public email extraction/ranking, scoring signals, unknown-vs-false, configurable weights, suppression |
 | `test_crawler_safety.py` | private/loopback/link-local/metadata refusal, DNS rebinding, redirect revalidation, retry-once, file:// opt-in |
@@ -244,7 +245,19 @@ Two things to know:
   downloadable data file and feed it in as CSV — the Registry API is
   rate-limited.
 
-### Discovery: bring your own leads
+### Discovery: bring your own leads (CSV)
+
+Already have a list - a conference export, a CRM dump, a purchased file? Import
+it and the rest of the pipeline is unchanged: crawl each site, extract services
+with their source URLs, score, personalize, review.
+
+```bash
+outreach import-csv leads.csv --dry-run   # show the column mapping, write nothing
+outreach import-csv leads.csv             # import
+outreach enrich && outreach score
+```
+
+Or point a campaign at the file and use the normal `discover` command:
 
 ```yaml
 # campaign.yaml
@@ -253,9 +266,50 @@ campaign:
   csv_path: leads.csv
 ```
 
+A row needs **either a website or a work email** - an email's domain is the site
+that gets crawled, so a list of addresses alone is enough to start:
+
 ```csv
-organization_name,website,city,state,phone,specialty,email
-ABC Dermatology,https://abcdermatology.com,San Jose,CA,408-555-0142,Dermatology;Cosmetic,
+practice_name,email,website,city,state,phone,specialty,services
+Lakeside Dermatology,info@lakesidederm.example,https://lakesidederm.example,Austin,TX,512-555-0100,Dermatology;Cosmetic,Mohs surgery;Acne care
+,frontdesk@cedar-peds-clinic.example,,Austin,TX,,Pediatrics,
+```
+
+See `leads.example.csv`. What the importer does with a file:
+
+* **Headers are matched loosely.** Case, spacing and punctuation are ignored, so
+  `Email`, `E-mail Address` and `email_address` all land on the same field.
+  Recognized: practice/company/organization name, website/url/domain, email,
+  city, state, zip/postal code, address, phone, specialty, services, provider/
+  contact name, NPI. Columns it does not recognize are listed, not silently
+  dropped.
+* **An email is enough to start.** `frontdesk@cedar-peds-clinic.example` yields
+  the site `cedar-peds-clinic.example` and the provisional name "Cedar Peds
+  Clinic"; enrichment replaces that placeholder with the name the site calls
+  itself. Free mailbox domains (gmail, outlook, …) are never mistaken for a
+  practice website - those leads import, but stay `ENRICHMENT_PARTIAL`.
+* **Your list is not re-filtered.** Campaign `specialties` and `geography`
+  narrow a *registry search*; they do not cut rows you chose by hand.
+  `exclude_keywords` still applies, because that is a do-not-contact policy.
+* **Cells may hold several values,** separated by `;` or `|`. Commas also split
+  emails, specialties and NPIs, but never provider names ("Smith, Jane") or
+  service descriptions.
+* **Rows for the same practice merge** (matched on domain, else name + place),
+  pooling their emails and services. Re-importing an updated file adds no
+  duplicates and backfills newly supplied contact details.
+* **Asserted facts are labelled as such.** Services or emails supplied in the
+  file get evidence rows citing `csv:<filename>`, never a page URL, so a
+  reviewer can tell what you asserted from what the crawler observed.
+
+Every skipped row is counted with a reason:
+
+```
+DISCOVERY: 2 ok, 0 failed, 0 skipped (of 2)
+    - 4 row(s) read, 2 lead(s) after merge, 2 with a crawlable website
+    - 1 lead(s) named from their domain until enrichment reads the site's own name
+    - 1 row(s) skipped: matched an exclude keyword
+    - 1 row(s) skipped: blank row
+    - ignored column(s): Notes
 ```
 
 ### Publishing artifacts (required before sending)
@@ -397,6 +451,7 @@ patient data" banner.
 ```
 outreach init-db                      create the SQLite schema
 outreach discover [campaign.yaml]     find practices (--city --state --specialty --limit --source)
+outreach import-csv leads.csv         import your own list (--dry-run, --limit)
 outreach enrich                       crawl websites, store facts + source URLs
 outreach score                        deterministic score, qualify or backlog
 outreach personalize                  one structured LLM call per qualified lead
@@ -483,7 +538,7 @@ returns the lead to review. `send` refuses anything whose approval is stale.
 
 ```
 app/
-  extraction/       registry sources, website resolution, email, normalization
+  extraction/       registry + CSV sources, website resolution, email, normalization
   enrichment/       crawler, service/provider/location extraction, tech detection
   scoring/          deterministic lead score
   llm/              provider interface + template/claude_cli/ollama/anthropic, prompts

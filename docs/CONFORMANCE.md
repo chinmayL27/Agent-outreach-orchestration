@@ -26,7 +26,7 @@ complete packages with 60.1s playable mp4s in the verification run above.
 
 | Stage | Where | Verified by |
 |---|---|---|
-| Find clinics/providers | `extraction/nppes.py` (NPPES, CSV, fixture) | `test_extraction.py`, `test_nppes_client.py` |
+| Find clinics/providers | `extraction/nppes.py` (NPPES, fixture), `extraction/csv_source.py` (bring-your-own list) | `test_extraction.py`, `test_nppes_client.py`, `test_csv_import.py` |
 | Normalize and deduplicate | `extraction/normalize.py` | `test_dedupe_key_*`, `test_merge_raw_leads_*` |
 | Discover + enrich from public sites | `extraction/website.py`, `enrichment/` | `test_integration.py`, `test_crawler_safety.py` |
 | Score with rules | `scoring/lead_score.py` | `test_email_and_scoring.py` |
@@ -81,9 +81,13 @@ complete packages with 60.1s playable mp4s in the verification run above.
    Playwright is used for video recording, not for rendering
    client-side-rendered clinic sites, so a React-only site enriches poorly.
 4. **Website discovery confidence (TDD §8).** Websites come from a campaign
-   `website_map`, a CSV import, or an email domain. There is no search-based
-   discovery and therefore no domain-match confidence score or ambiguous-match
-   review queue. Leads without a website stay `ENRICHMENT_PARTIAL`.
+   `website_map`, a CSV import (a `website` column, or the domain of a supplied
+   work email), or an email found later. There is no search-based discovery and
+   therefore no domain-match confidence score or ambiguous-match review queue.
+   Leads without a website stay `ENRICHMENT_PARTIAL`. A name derived from a
+   domain during CSV import is a placeholder, replaced at enrichment by the name
+   the site gives itself; until then it is visibly machine-made, and the human
+   review gate is what catches it.
 5. **Automated opt-out ingestion (PRD §4.8, TDD §18).** Opt-outs are recorded by
    an operator via `outreach suppress add`. Reply/bounce mailbox ingestion is
    future work — which is what the PRD scopes for the MVP, but it means

@@ -6,12 +6,12 @@ any other stage.
 
 NPPES caveat: NPI registration is *not* evidence that a provider is currently
 licensed or credentialed, and the registry contains no website field.  Websites
-come from a campaign `website_map`, a CSV import, or a later discovery step.
+come from a campaign `website_map`, a CSV import (see `csv_source.py`), or a
+later discovery step.
 """
 
 from __future__ import annotations
 
-import csv
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -50,7 +50,14 @@ class RawLead:
     provider_names: list[str] = field(default_factory=list)
     npi_numbers: list[str] = field(default_factory=list)
     emails: list[str] = field(default_factory=list)
+    services: list[str] = field(default_factory=list)
     source: str = "unknown"
+    #: Provenance for facts the source asserts rather than observes (e.g. a
+    #: CSV column).  Crawled facts carry the page URL instead.
+    evidence_source: str | None = None
+    #: True when the name was derived from a domain and enrichment may replace
+    #: it with the name the site calls itself.
+    provisional_name: bool = False
 
     @property
     def key(self) -> str:
@@ -165,8 +172,23 @@ def merge_raw_leads(raw_leads: Iterable[RawLead]) -> list[RawLead]:
         for spec in raw.specialty:
             if spec not in existing.specialty:
                 existing.specialty.append(spec)
+        for service in raw.services:
+            if service not in existing.services:
+                existing.services.append(service)
+        for email in raw.emails:
+            if email not in existing.emails:
+                existing.emails.append(email)
         existing.phone = existing.phone or raw.phone
         existing.website = existing.website or raw.website
+        existing.address = existing.address or raw.address
+        existing.postal_code = existing.postal_code or raw.postal_code
+        existing.city = existing.city or raw.city
+        existing.state = existing.state or raw.state
+        existing.evidence_source = existing.evidence_source or raw.evidence_source
+        # A real name from any row beats a name derived from a domain.
+        if existing.provisional_name and not raw.provisional_name:
+            existing.organization_name = raw.organization_name
+            existing.provisional_name = False
     return list(merged.values())
 
 
@@ -268,36 +290,6 @@ def _resolve_fixture_website(hint: str, fixture_path: Path) -> str:
     return (fixture_path.parent / hint).resolve().as_uri()
 
 
-class CsvSource:
-    """Bring-your-own-leads: organization_name,website,city,state,... CSV."""
-
-    name = "csv"
-
-    def __init__(self, path: str | Path):
-        self.path = Path(path)
-
-    def search(self, query: LeadQuery) -> list[RawLead]:
-        raws: list[RawLead] = []
-        with self.path.open(newline="", encoding="utf-8") as handle:
-            for row in csv.DictReader(handle):
-                name = (row.get("organization_name") or row.get("name") or "").strip()
-                if not name:
-                    continue
-                raw = RawLead(
-                    organization_name=name,
-                    website=(row.get("website") or "").strip() or None,
-                    city=normalize_city(row.get("city")),
-                    state=normalize_state(row.get("state")),
-                    phone=normalize_phone(row.get("phone")),
-                    specialty=[s.strip() for s in (row.get("specialty") or "").split(";") if s.strip()],
-                    emails=[e.strip() for e in (row.get("email") or "").split(";") if e.strip()],
-                    source="csv",
-                )
-                if _matches_query(raw, query):
-                    raws.append(raw)
-        return merge_raw_leads(raws)[: query.limit]
-
-
 def build_source(campaign: CampaignConfig) -> LeadSource:
     source = (campaign.source or "nppes").lower()
     if source == "fixture":
@@ -307,6 +299,8 @@ def build_source(campaign: CampaignConfig) -> LeadSource:
     if source == "csv":
         if not campaign.csv_path:
             raise ValueError("campaign.source=csv requires csv_path")
+        from app.extraction.csv_source import CsvSource  # local: csv_source imports RawLead
+
         return CsvSource(campaign.csv_path)
     if source == "nppes":
         return NppesSource()

@@ -6,6 +6,7 @@ later, in the personalization stage, and only from these evidence rows.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -59,6 +60,24 @@ def summarize(fields: dict[str, Any], organization_name: str) -> str:
     return "; ".join(parts)
 
 
+def site_name(title: str | None) -> str | None:
+    """The clinic's own name, as taken from its home page title.
+
+    Titles are usually "Lakeside Dermatology | Austin, TX" or "Home - Cedar
+    Pediatrics"; keep the longest meaningful segment and drop boilerplate.
+    """
+    if not title:
+        return None
+    segments = [part.strip() for part in re.split(r"[|\u2013\u2014>\u00b7]|\s-\s|:", title) if part.strip()]
+    candidates = [
+        segment
+        for segment in segments
+        if segment.lower() not in {"home", "homepage", "welcome", "index"} and 2 < len(segment) <= 80
+    ]
+    # The name leads the title; the rest is usually a tagline or location.
+    return truncate(candidates[0], 120) if candidates else None
+
+
 def enrich_from_crawl(crawl: CrawlResult, organization_name: str) -> EnrichmentOutcome:
     outcome = EnrichmentOutcome(pages_crawled=len(crawl.pages), errors=list(crawl.errors))
     if not crawl.pages:
@@ -88,6 +107,7 @@ def enrich_from_crawl(crawl: CrawlResult, organization_name: str) -> EnrichmentO
         "faq_questions": tech.faq_questions,
         "emails": emails,
         "provider_names": svc.provider_names,
+        "site_name": site_name(home.title),
     }
     fields["company_summary"] = summarize(fields, organization_name)
 
