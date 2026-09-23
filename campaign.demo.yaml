@@ -1,0 +1,45 @@
+# Offline demo campaign.
+#
+# Uses the bundled NPPES payload and the sample clinic websites in
+# tests/fixtures/sites, so `outreach run campaign.demo.yaml` works end to end
+# with no network access, no API key and no LLM.
+campaign:
+  id: demo
+  name: Offline demo campaign
+
+  source: fixture
+  fixture_path: tests/fixtures/nppes_sample.json
+
+  specialties:
+    - Dermatology
+    - Family Medicine
+    - Pediatrics
+    - Dentist
+    - Urgent Care
+
+  geography:
+    state: CA
+
+  practice_size:
+    min_providers: 1
+    max_providers: 30
+
+  exclude_keywords:
+    - hospital
+    - university
+    - medical center
+    - department of
+    - student health
+
+  maximum_leads: 20
+
+  scoring:
+    premium_threshold: 80
+    basic_threshold: 60
+
+  product:
+    name: AI Patient Assistant
+    capabilities:
+      - answering common patient questions from your published website content
+      - routing patients to the right service or location
+      - guiding patients into your existing appointment request flow
